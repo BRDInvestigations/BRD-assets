@@ -1,0 +1,42 @@
+name: Auto-Convert Images to WebP
+
+on:
+  push:
+    paths:
+      - '**.jpg'
+      - '**.jpeg'
+      - '**.png'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install WebP Converter
+        run: sudo apt-get update && sudo apt-get install -y webp
+
+      - name: Convert to WebP
+        run: |
+          find . -type f \( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" \) ! -path "*/.*" | while read -r img; do
+            base="${img%.*}"
+            if [ ! -f "${base}.webp" ]; then
+              echo "Converting $img to WebP..."
+              cwebp -q 80 "$img" -o "${base}.webp"
+              
+              # Remove the '#' from the line below if you want to automatically delete the original JPG/PNG after conversion
+              # rm "$img"
+            fi
+          done
+
+      - name: Commit and Push Optimised Images
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-converted images to WebP" && git push)
